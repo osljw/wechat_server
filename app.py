@@ -1,5 +1,6 @@
 import time
 import requests
+import hashlib
 
 from flask import Flask, request, jsonify
 import xml.etree.ElementTree as ET
@@ -7,17 +8,30 @@ import xml.etree.ElementTree as ET
 
 app = Flask(__name__)
 
+
+def check_signature(token, signature, timestamp, nonce):
+    # 将token、timestamp、nonce三个参数进行字典序排序
+    params = sorted([token, timestamp, nonce])
+    # 将排序后的参数拼接成一个字符串
+    params_str = ''.join(params)
+    # 使用sha1算法对字符串进行哈希
+    hash_code = hashlib.sha1(params_str.encode('utf-8')).hexdigest()
+    # 将计算出的哈希值与signature进行比较，如果相同则验证通过
+    return hash_code == signature
+
 @app.route('/wechat', methods=['GET', 'POST'])
 def wechat():
     if request.method == 'GET':
         # 验证微信服务器
-        token = '你的Token'
+        token = '你的Token' # 设置与开发 -> 基本配置 -> 服务器配置 -> 令牌(Token)
         signature = request.args.get('signature')
         timestamp = request.args.get('timestamp')
         nonce = request.args.get('nonce')
         echostr = request.args.get('echostr')
-        # 这里需要实现验证逻辑
-        return echostr
+        if check_signature(token, signature, timestamp, nonce):
+            return echostr
+        else:
+            return '验证失败'
     elif request.method == 'POST':
         # 处理微信消息
         msg = request.data
